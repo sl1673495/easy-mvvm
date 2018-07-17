@@ -1,0 +1,6 @@
+#app {
+  display: flex;
+  text-align: center;
+  color: red;
+  font-size: 15px;
+}
