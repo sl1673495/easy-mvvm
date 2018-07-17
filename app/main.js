@@ -1,7 +1,8 @@
 import EasyMvvm from 'easyMvvm'
+import './index.css'
 
 const data = {
-    msg: 'hello pm',
+    msg: 'easy-mvvm',
     msg2: 'hello world'
 }
 
@@ -9,7 +10,7 @@ let i = 0
 
 const methods = {
     change() {
-        data.msg = 'data is changed!!' + (++i)
+        data.msg2 = 'data is changed!!' + (++i)
     }
 }
 
@@ -17,14 +18,8 @@ new EasyMvvm({
     el: '#app',
     template: `
                   <div>
-                    <p>
-                        <span>this is proxy-mvvm</span>
-                        <span>this is</span>
-                        <p>
-                         {{msg2}}
-                        </p>
-                    </p>
-                    <p>{{msg}}嘎嘎{{msg2}}</p>
+                    <h1>this is {{msg}}</h1>
+                    <p>{{msg2}}</p>
                     <button @click=change>change</button>
                   </div>
                 `,

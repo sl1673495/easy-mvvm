@@ -22,7 +22,6 @@ export default (vm) => {
  */
 function complier(vm) {
     const {_options: {data, methods, template, el}} = vm
-
     const complierChild = (childNodes) => {
         for (let i = 0, len = childNodes.length; i < len; i++) {
             const node = childNodes[i]
@@ -40,9 +39,7 @@ function complier(vm) {
         }
     }
     const dom = parseDom(template)
-
     complierChild(dom.childNodes, vm)
-
     dom.setAttribute('id', el.slice(1))
     return dom
 }
