@@ -1,9 +1,15 @@
 import EasyMvvm from 'easyMvvm'
 
+const data = {
+    msg: 'hello pm',
+    msg2: 'hello world'
+}
+
+let i = 0
 
 const methods = {
     change() {
-        data.msg = Math.random()
+        data.msg = 'data is changed!!' + (++i)
     }
 }
 
@@ -23,8 +29,5 @@ new EasyMvvm({
                   </div>
                 `,
     methods,
-    data: {
-        msg: 'hello pm',
-        msg2: 'hello world'
-    },
+    data
 })

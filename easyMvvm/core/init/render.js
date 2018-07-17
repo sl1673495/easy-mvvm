@@ -30,10 +30,12 @@ function complier(vm) {
                 // 递归调用
                 complierChild(node.childNodes)
             }
-            if (isTextNode(node) && !isEmptyNode(node)) {
-                complierTextNode(node, data)
-            }else {
-                complierNormalNode(node, data, methods)
+            if (isTextNode(node)) {
+                if (!isEmptyNode(node)) {
+                    complierTextNode(node, data)
+                }
+            } else {
+                complierNormalNode(node, methods)
             }
         }
     }
@@ -73,7 +75,16 @@ function complierTextNode(node, data) {
  * @param data
  * @param methods
  */
-function complierNormalNode(node, data, methods) {
-
+function complierNormalNode(node, methods) {
+    const attrs = node.attributes
+    let i, len
+    for (i = 0, len = attrs.length; i < len; i++) {
+        const name = attrs[i].nodeName
+        const value = attrs[i].nodeValue
+        if (name[0] === '@') {
+            const eventName = name.slice(1)
+            node.addEventListener(eventName, methods[value])
+        }
+    }
 }
 
