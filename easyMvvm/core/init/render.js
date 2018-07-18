@@ -2,6 +2,7 @@ import {parseDom, isTextNode, isEmptyNode} from "../../util/util";
 import {rootEm} from "../event/instance";
 
 
+
 export default (vm) => {
     const {el} = vm._options
     const render = () => {
@@ -45,29 +46,54 @@ function complier(vm) {
 }
 
 /**
- * // 编译文字节点
+ * // 编译文字节点 解析模板语法
  * @param node
  * @param data
  */
 function complierTextNode(node, data) {
     // 根据{{}}去匹配命中的nodeValue
-    const regExp = /{{\w*}}/g
+    const regExp = /{{[^\{]*}}/g
     const matches = node.nodeValue.match(regExp)
     if (matches && matches.length) {
-        let l = 0, len = matches.length
+        let l = 0, len = matches.length,dataKeys = Object.keys(data)
         for (l; l < len; l++) {
-            // 替换{{}}得到key
-            const key = matches[l].slice(2, matches[l].length - 2)
-            if (key in data) {
-                // 根据data中key对应的值替换nodeValue
-                node.nodeValue = node.nodeValue.replace(matches[l], data[key])
+            // 替换{{}}得到表达式
+            let key
+            let expression = matches[l].slice(2, matches[l].length - 2).trim()
+            // 如果{{}}中的字符串完全是data中的key 就直接赋值
+            // 否则用正则解析内容中是否有匹配data里的key的值
+            if (expression in data) {
+                key = expression
+            }else {
+                let j = 0, klen = dataKeys.length
+                const keyRe = new RegExp(`^${dataKeys[j]}\\s|\\s${dataKeys[j]}\\s`)
+                for (j; j< klen; j++) {
+                    const keyMatches = expression.match(keyRe)
+                    if (keyMatches) {
+                        key = keyMatches[0].trim()
+                    }
+                }
             }
+            if (!key) {
+                console.warn(
+                    `
+                        key is not found in data
+                        but use in template
+                        check the fragment:
+                        ${expression}
+                     `
+                )
+                return
+            }
+            expression = expression.replace(key, data[key])
+            // 根据data中key对应的值替换nodeValue
+            node.nodeValue = node.nodeValue.replace(matches[l], expression)
         }
     }
 }
 
 /**
- * 编译普通节点
+ * 编译普通节点 解析事件绑定
  * @param node
  * @param data
  * @param methods
