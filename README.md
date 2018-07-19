@@ -35,47 +35,44 @@ new EasyMvvm({
 在setter中通过dep.notify通知watcher进行视图更新
 easy-mvvm简化了这部分的实现
 ```
-const calaMatches = (textTemp) => {
-            let result, l = 0, len = matches.length, dataKeys = Object.keys(data)
+const calcMatches = (textTemp) => {
+            let result, l = 0, retMatchedKeys = [], len = matches.length, dataKeys = Object.keys(data)
+            // 循环这个文字节点中{{}}包裹的文字
             for (; l < len; l++) {
-                // 替换{{}}得到表达式
-                let key
+                // 替换{{}}得到表达式 currentMatchedKeys记录这单个模板中有几个key匹配到了
+                let key, currentMatchedKeys = []
                 let expression = matches[l].slice(2, matches[l].length - 2).trim()
                 // 如果{{}}中的字符串完全是data中的key 就直接赋值
                 // 否则用正则解析内容中是否有匹配data里的key的值
                 if (expression in data) {
-                    key = expression
+                    // key = expression
+                    currentMatchedKeys.push(expression)
                 } else {
+                    // 否则循环data中的所有key去模板中找匹配项
                     let j = 0, klen = dataKeys.length
-                    const keyRe = new RegExp(`^${dataKeys[j]}\\s|\\s${dataKeys[j]}\\s`)
                     for (; j < klen; j++) {
-                        const keyMatches = expression.match(keyRe)
-                        if (keyMatches) {
-                            key = keyMatches[0].trim()
+                        const dataKey = dataKeys[j]
+                        if (expression.includes(dataKey)) {
+                            currentMatchedKeys.push(dataKey)
                         }
                     }
                 }
-                if (!key) {
-                    console.warn(
-                        `
-                        key is not found in data
-                        but use in template
-                        check the fragment:
+                expression = `return ${expression}`
+                expression = new Function('vm', `
+                    with(vm) {
                         ${expression}
-                     `
-                    )
-                    return
-                }
-                expression = expression.replace(key, data[key])
+                    }
+                `)(vm)
                 // 根据data中key对应的值替换nodeValue
                 // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
                 // 这样可以解决一个文本节点有多次使用{{}}的情况
                 l === 0 ?
                     result = textTemp.replace(matches[l], expression) :
                     result = result.replace(matches[l], expression)
-                ret.shouldCollect = true
-                ret.key = key
-                ret.renderMethods = calaMatches.bind(null, textTemplate)
+                retMatchedKeys.push(...currentMatchedKeys)
+            }
+            if (retMatchedKeys.length) {
+                ret.keys = retMatchedKeys
             }
             node.nodeValue = result
         }
