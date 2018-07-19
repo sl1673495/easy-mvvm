@@ -21,8 +21,10 @@ new EasyMvvm({
     },
     methods: {
         change() {
-            this.flag = !this.flag
             this.msg2 = 'data is changed!!' + (++i)
+            setTimeout(() => {
+                this.msg2 = 'change async'
+            }, 1000)
         },
         input(e) {
             this.msg = e.target.value
