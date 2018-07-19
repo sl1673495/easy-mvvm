@@ -11,7 +11,9 @@ export function defineReactive(data) {
       },
       set: function reactiveSetter(newVal) {
         val = newVal
-        rootEm.emit('render')
+        console.log(rootEm)
+        console.log(`${key}-render`)
+        rootEm.emit(`${key}-render`)
         return newVal
       },
     })

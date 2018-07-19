@@ -1,16 +1,8 @@
 import {parseDom, isTextNode, isEmptyNode} from "../../util/util";
 import {rootEm} from "../event/instance";
 
-
-
 export default (vm) => {
-    const {el} = vm._options
-    const render = () => {
-        document.body.replaceChild(
-            complier(vm),
-            document.querySelector(el)
-        )
-    }
+    const render = () => complier(vm)
     //将render方法注册到事件总线
     rootEm.on('render', render)
     render()
@@ -22,17 +14,22 @@ export default (vm) => {
  * @param vm
  */
 function complier(vm) {
-    const {_options: {data, methods, template, el}} = vm
+    const {_options: { methods, template, el}} = vm
     const complierChild = (childNodes) => {
         for (let i = 0, len = childNodes.length; i < len; i++) {
             const node = childNodes[i]
+            console.log(node)
             if (node.childNodes && node.childNodes.length) {
                 // 递归调用
                 complierChild(node.childNodes)
             }
             if (isTextNode(node)) {
                 if (!isEmptyNode(node)) {
-                    complierTextNode(node, data)
+                    const complierFn = complierTextNode.bind(null, node, vm)
+                    const { shouldCollect, key: watchKey, renderMethods } = complierFn()
+                    if (shouldCollect) {
+                        rootEm.on(`${watchKey}-render`, renderMethods)
+                    }
                 }
             } else {
                 complierNormalNode(node, methods)
@@ -40,56 +37,72 @@ function complier(vm) {
         }
     }
     const dom = parseDom(template)
-    complierChild(dom.childNodes, vm)
     dom.setAttribute('id', el.slice(1))
+    document.querySelector(el).appendChild(dom)
+    complierChild(dom.childNodes, vm)
+    vm._hasRender = true
     return dom
 }
 
 /**
- * // 编译文字节点 解析模板语法
+ * 编译文字节点 解析模板语法
  * @param node
  * @param data
  */
-function complierTextNode(node, data) {
+function complierTextNode(node, vm) {
+    const { _options: { data }} = vm
     // 根据{{}}去匹配命中的nodeValue
     const regExp = /{{[^\{]*}}/g
+    const textTemplate = node.nodeValue
     const matches = node.nodeValue.match(regExp)
+    const ret = {
+        shouldCollect: false,
+        key: null,
+    }
     if (matches && matches.length) {
-        let l = 0, len = matches.length,dataKeys = Object.keys(data)
-        for (l; l < len; l++) {
-            // 替换{{}}得到表达式
-            let key
-            let expression = matches[l].slice(2, matches[l].length - 2).trim()
-            // 如果{{}}中的字符串完全是data中的key 就直接赋值
-            // 否则用正则解析内容中是否有匹配data里的key的值
-            if (expression in data) {
-                key = expression
-            }else {
-                let j = 0, klen = dataKeys.length
-                const keyRe = new RegExp(`^${dataKeys[j]}\\s|\\s${dataKeys[j]}\\s`)
-                for (j; j< klen; j++) {
-                    const keyMatches = expression.match(keyRe)
-                    if (keyMatches) {
-                        key = keyMatches[0].trim()
+        const calaMatches = (textTemp) => {
+            let l = 0, len = matches.length, dataKeys = Object.keys(data)
+            for (; l < len; l++) {
+                // 替换{{}}得到表达式
+                let key
+                let expression = matches[l].slice(2, matches[l].length - 2).trim()
+                // 如果{{}}中的字符串完全是data中的key 就直接赋值
+                // 否则用正则解析内容中是否有匹配data里的key的值
+                if (expression in data) {
+                    key = expression
+                } else {
+                    let j = 0, klen = dataKeys.length
+                    const keyRe = new RegExp(`^${dataKeys[j]}\\s|\\s${dataKeys[j]}\\s`)
+                    for (; j < klen; j++) {
+                        const keyMatches = expression.match(keyRe)
+                        if (keyMatches) {
+                            key = keyMatches[0].trim()
+                        }
                     }
                 }
-            }
-            if (!key) {
-                console.warn(
-                    `
+                if (!key) {
+                    console.warn(
+                        `
                         key is not found in data
                         but use in template
                         check the fragment:
                         ${expression}
                      `
-                )
-                return
+                    )
+                    return
+                }
+                expression = expression.replace(key, data[key])
+                // 根据data中key对应的值替换nodeValue
+                node.nodeValue = textTemp.replace(matches[l], expression)
+                ret.shouldCollect = true
+                ret.key = key
+                console.log(textTemplate)
+                ret.renderMethods = calaMatches.bind(null, textTemplate)
             }
-            expression = expression.replace(key, data[key])
-            // 根据data中key对应的值替换nodeValue
-            node.nodeValue = node.nodeValue.replace(matches[l], expression)
         }
+        calaMatches(textTemplate)
     }
+    return ret
 }
 
 /**
