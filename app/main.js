@@ -8,11 +8,16 @@ new EasyMvvm({
     template: `
                   <div>
                     <h1>this is {{msg}}</h1>
-                    <p>{{  msg2  }}</p>
+                    <p>{{flag ? msg2 : msg1  }}</p>
                     <button @click=change>change</button>
                     <input @input=input />
                   </div>
                 `,
+    data: {
+        msg: 'easy-mvvm',
+        msg2: 'hello world',
+        flag: true
+    },
     methods: {
         change() {
             this.msg = 'hello'
@@ -22,8 +27,4 @@ new EasyMvvm({
             this.msg = e.target.value
         }
     },
-    data: {
-        msg: 'easy-mvvm',
-        msg2: 'hello world'
-    }
 })
