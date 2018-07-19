@@ -1,8 +1,36 @@
 # easy-mvvm
 简易mvvm框架
 核心代码在easyMvvm里
-预览地址: https://sl1673495.github.io/easy-mvvm/
-
+#### 
+预览地址 
+https://sl1673495.github.io/easy-mvvm/
+#### 使用方法
+```
+new EasyMvvm({
+    el: '#app',
+    template: `
+                  <div>
+                    <h1>this is {{msg}}</h1>
+                    <p>{{  msg2  }}</p>
+                    <button @click=change>change</button>
+                    <input @input=input />
+                  </div>
+                `,
+    methods: {
+        change() {
+            this.msg = 'hello'
+            this.msg2 = 'data is changed!!' + (++i)
+        },
+        input(e) {
+            this.msg = e.target.value
+        }
+    },
+    data: {
+        msg: 'easy-mvvm',
+        msg2: 'hello world'
+    }
+})
+```
 #### 与vue实现的一些不同
 在vue中，实现数据变更视图更新的核心逻辑在于劫持data的getter，通过 dep.depend收集依赖，
 在setter中通过dep.notify通知watcher进行视图更新
