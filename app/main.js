@@ -15,12 +15,13 @@ new EasyMvvm({
                 `,
     data: {
         msg: 'easy-mvvm',
+        msg1: 'easy-local',
         msg2: 'hello world',
         flag: true
     },
     methods: {
         change() {
-            this.msg = 'hello'
+            this.flag = !this.flag
             this.msg2 = 'data is changed!!' + (++i)
         },
         input(e) {
