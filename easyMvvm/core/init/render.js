@@ -14,7 +14,7 @@ export default (vm) => {
  * @param vm
  */
 function complier(vm) {
-    const {_options: { methods, template, el}} = vm
+    const {_options: {template, el}} = vm
     const complierChild = (childNodes) => {
         for (let i = 0, len = childNodes.length; i < len; i++) {
             const node = childNodes[i]
@@ -24,10 +24,13 @@ function complier(vm) {
             }
             if (isTextNode(node)) {
                 if (!isEmptyNode(node)) {
-                    const { shouldCollect, key: watchKey, renderMethods } = complierTextNode(node, vm)
-                    if (shouldCollect) {
+                    const {keys: watchKeys, renderMethods} = complierTextNode(node, vm)
+                    if (watchKeys && watchKeys.length) {
                         // 在setter里emit这个事件 实现驱动视图变化
-                        eventBus.on(`${watchKey}-render`, renderMethods)
+                        let j = 0, klen = watchKeys.length
+                        for (; j < klen; j++) {
+                            eventBus.on(`${watchKeys[j]}-render`, renderMethods)
+                        }
                     }
                 }
             } else {
@@ -38,7 +41,6 @@ function complier(vm) {
     const dom = parseDom(template)
     document.querySelector(el).appendChild(dom)
     complierChild(dom.childNodes, vm)
-    vm._hasRender = true
     return dom
 }
 
@@ -48,7 +50,7 @@ function complier(vm) {
  * @param vm
  */
 function complierTextNode(node, vm) {
-    const { _options: { data }} = vm
+    const {_options: {data}} = vm
     // 根据{{}}去匹配命中的nodeValue
     const regExp = /{{[^\{]*}}/g
     const textTemplate = node.nodeValue
@@ -60,60 +62,47 @@ function complierTextNode(node, vm) {
     if (matches && matches.length) {
         // 把通过匹配模板如{{msg}}和data渲染dom的方法返回出去 保存在事件监听里
         const calaMatches = (textTemp) => {
-            let result, l = 0, len = matches.length, dataKeys = Object.keys(data)
+            let result, l = 0, retMatchedKeys = [], len = matches.length, dataKeys = Object.keys(data)
             // 循环这个文字节点中{{}}包裹的文字
             for (; l < len; l++) {
-                // 替换{{}}得到表达式 matchKeys记录这个模板中有几个key匹配到了
-                let key, matchKeys = []
+                // 替换{{}}得到表达式 currentMatchedKeys记录这单个模板中有几个key匹配到了
+                let key, currentMatchedKeys = []
                 let expression = matches[l].slice(2, matches[l].length - 2).trim()
                 // 如果{{}}中的字符串完全是data中的key 就直接赋值
                 // 否则用正则解析内容中是否有匹配data里的key的值
                 if (expression in data) {
                     // key = expression
-                    matchKeys.push(expression)
+                    currentMatchedKeys.push(expression)
                 } else {
                     // 否则循环data中的所有key去模板中找匹配项
                     let j = 0, klen = dataKeys.length
                     for (; j < klen; j++) {
                         const dataKey = dataKeys[j]
-                        // const keyRe = new RegExp(`^${dataKeys[j]}\\s?|\\s${dataKeys[j]}\\s?`)
-                        // const keyMatches = expression.match(keyRe)
                         if (expression.includes(dataKey)) {
-                            matchKeys.push(dataKey)
+                            currentMatchedKeys.push(dataKey)
                         }
                     }
-                    console.log(matchKeys)
                 }
-                // if (!key) {
-                //     console.warn(
-                //         `
-                //         key is not found in data
-                //         but use in template
-                //         check the fragment:
-                //         ${expression}
-                //      `
-                //     )
-                //     return
-                // }
-                let k = 0, mLen = matchKeys.length
-                for (; k < mLen; k++) {
-                    expression = expression.replace(new RegExp(matchKeys[k], 'g'), `data.${matchKeys[k]}`)
-                }
-                console.log(expression)
                 expression = `return ${expression}`
-                expression = new Function("data", expression)(data)
+                expression = new Function('data', `
+                    with(data) {
+                        ${expression}
+                    }
+                `)(data)
                 // 根据data中key对应的值替换nodeValue
                 // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
                 // 这样可以解决一个文本节点有多次使用{{}}的情况
                 l === 0 ?
                     result = textTemp.replace(matches[l], expression) :
                     result = result.replace(matches[l], expression)
-                ret.shouldCollect = true
-                ret.key = key
-                ret.renderMethods = calaMatches.bind(null, textTemplate)
+                retMatchedKeys.push(...currentMatchedKeys)
+            }
+            if (retMatchedKeys.length) {
+                ret.keys = retMatchedKeys
             }
             node.nodeValue = result
         }
+        ret.renderMethods = calaMatches.bind(null, textTemplate)
         calaMatches(textTemplate)
     }
     return ret
@@ -125,7 +114,7 @@ function complierTextNode(node, vm) {
  * @param vm
  */
 function complierNormalNode(node, vm) {
-    const { _options: { methods } } = vm
+    const {_options: {methods}} = vm
     const attrs = node.attributes
     let i, len
     for (i = 0, len = attrs.length; i < len; i++) {
