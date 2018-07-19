@@ -10,6 +10,7 @@ let i = 0
 
 const methods = {
     change() {
+        data.msg = 'hello'
         data.msg2 = 'data is changed!!' + (++i)
     },
 }
@@ -18,7 +19,7 @@ new EasyMvvm({
     el: '#app',
     template: `
                   <div>
-                    <h1>this is {{msg + 1}}</h1>
+                    <h1>this is {{msg}}</h1>
                     <p>{{  msg2  }}</p>
                     <button @click=change>change</button>
                   </div>

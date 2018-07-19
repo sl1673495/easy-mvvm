@@ -1,10 +1,10 @@
 import {parseDom, isTextNode, isEmptyNode} from "../../util/util";
-import {rootEm} from "../event/instance";
+import {eventBus} from "../event/instance";
 
 export default (vm) => {
     const render = () => complier(vm)
     //将render方法注册到事件总线
-    rootEm.on('render', render)
+    eventBus.on('render', render)
     render()
 }
 
@@ -18,17 +18,16 @@ function complier(vm) {
     const complierChild = (childNodes) => {
         for (let i = 0, len = childNodes.length; i < len; i++) {
             const node = childNodes[i]
-            console.log(node)
             if (node.childNodes && node.childNodes.length) {
                 // 递归调用
                 complierChild(node.childNodes)
             }
             if (isTextNode(node)) {
                 if (!isEmptyNode(node)) {
-                    const complierFn = complierTextNode.bind(null, node, vm)
-                    const { shouldCollect, key: watchKey, renderMethods } = complierFn()
+                    const { shouldCollect, key: watchKey, renderMethods } = complierTextNode(node, vm)
                     if (shouldCollect) {
-                        rootEm.on(`${watchKey}-render`, renderMethods)
+                        // 在setter里emit这个事件 实现驱动视图变化
+                        eventBus.on(`${watchKey}-render`, renderMethods)
                     }
                 }
             } else {
@@ -37,7 +36,6 @@ function complier(vm) {
         }
     }
     const dom = parseDom(template)
-    dom.setAttribute('id', el.slice(1))
     document.querySelector(el).appendChild(dom)
     complierChild(dom.childNodes, vm)
     vm._hasRender = true
@@ -47,7 +45,7 @@ function complier(vm) {
 /**
  * 编译文字节点 解析模板语法
  * @param node
- * @param data
+ * @param vm
  */
 function complierTextNode(node, vm) {
     const { _options: { data }} = vm
@@ -60,6 +58,7 @@ function complierTextNode(node, vm) {
         key: null,
     }
     if (matches && matches.length) {
+        // 把通过匹配模板如{{msg}}和data渲染dom的方法返回出去 保存在事件监听里
         const calaMatches = (textTemp) => {
             let l = 0, len = matches.length, dataKeys = Object.keys(data)
             for (; l < len; l++) {
@@ -96,7 +95,6 @@ function complierTextNode(node, vm) {
                 node.nodeValue = textTemp.replace(matches[l], expression)
                 ret.shouldCollect = true
                 ret.key = key
-                console.log(textTemplate)
                 ret.renderMethods = calaMatches.bind(null, textTemplate)
             }
         }
@@ -108,7 +106,6 @@ function complierTextNode(node, vm) {
 /**
  * 编译普通节点 解析事件绑定
  * @param node
- * @param data
  * @param methods
  */
 function complierNormalNode(node, methods) {

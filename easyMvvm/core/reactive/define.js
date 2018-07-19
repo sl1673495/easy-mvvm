@@ -1,4 +1,4 @@
-import { rootEm } from "../event/instance";
+import { eventBus } from "../event/instance";
 
 export function defineReactive(data) {
   const keys = Object.keys(data)
@@ -11,9 +11,7 @@ export function defineReactive(data) {
       },
       set: function reactiveSetter(newVal) {
         val = newVal
-        console.log(rootEm)
-        console.log(`${key}-render`)
-        rootEm.emit(`${key}-render`)
+        eventBus.emit(`${key}-render`)
         return newVal
       },
     })
