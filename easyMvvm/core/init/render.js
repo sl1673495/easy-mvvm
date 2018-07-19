@@ -31,7 +31,7 @@ function complier(vm) {
                     }
                 }
             } else {
-                complierNormalNode(node, methods)
+                complierNormalNode(node, vm)
             }
         }
     }
@@ -106,9 +106,10 @@ function complierTextNode(node, vm) {
 /**
  * 编译普通节点 解析事件绑定
  * @param node
- * @param methods
+ * @param vm
  */
-function complierNormalNode(node, methods) {
+function complierNormalNode(node, vm) {
+    const { _options: { methods } } = vm
     const attrs = node.attributes
     let i, len
     for (i = 0, len = attrs.length; i < len; i++) {
@@ -116,7 +117,7 @@ function complierNormalNode(node, methods) {
         const value = attrs[i].nodeValue
         if (name[0] === '@') {
             const eventName = name.slice(1)
-            node.addEventListener(eventName, methods[value])
+            node.addEventListener(eventName, methods[value].bind(vm))
         }
     }
 }
