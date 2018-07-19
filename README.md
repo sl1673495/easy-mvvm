@@ -36,7 +36,7 @@ new EasyMvvm({
 easy-mvvm简化了这部分的实现
 ```
 const calaMatches = (textTemp) => {
-            let l = 0, len = matches.length, dataKeys = Object.keys(data)
+            let result, l = 0, len = matches.length, dataKeys = Object.keys(data)
             for (; l < len; l++) {
                 // 替换{{}}得到表达式
                 let key
@@ -68,11 +68,16 @@ const calaMatches = (textTemp) => {
                 }
                 expression = expression.replace(key, data[key])
                 // 根据data中key对应的值替换nodeValue
-                node.nodeValue = textTemp.replace(matches[l], expression)
+                // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
+                // 这样可以解决一个文本节点有多次使用{{}}的情况
+                l === 0 ?
+                    result = textTemp.replace(matches[l], expression) :
+                    result = result.replace(matches[l], expression)
                 ret.shouldCollect = true
                 ret.key = key
                 ret.renderMethods = calaMatches.bind(null, textTemplate)
             }
+            node.nodeValue = result
         }
 ```
 这部分是文字节点render的核心方法， 注意
