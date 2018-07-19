@@ -52,15 +52,17 @@ function complierTextNode(node, vm) {
     // 根据{{}}去匹配命中的nodeValue
     const regExp = /{{[^\{]*}}/g
     const textTemplate = node.nodeValue
+    console.log(textTemplate)
     const matches = node.nodeValue.match(regExp)
     const ret = {
         shouldCollect: false,
         key: null,
     }
     if (matches && matches.length) {
+        console.log(matches)
         // 把通过匹配模板如{{msg}}和data渲染dom的方法返回出去 保存在事件监听里
         const calaMatches = (textTemp) => {
-            let l = 0, len = matches.length, dataKeys = Object.keys(data)
+            let result, l = 0, len = matches.length, dataKeys = Object.keys(data)
             for (; l < len; l++) {
                 // 替换{{}}得到表达式
                 let key
@@ -92,7 +94,12 @@ function complierTextNode(node, vm) {
                 }
                 expression = expression.replace(key, data[key])
                 // 根据data中key对应的值替换nodeValue
-                node.nodeValue = textTemp.replace(matches[l], expression)
+                // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
+                // 这样可以解决一个文本节点有多次使用{{}}的情况
+                node.nodeValue = l === 0 ?
+                    textTemp.replace(matches[l], expression) :
+                    result.replace(matches[l], expression)
+                result = node.nodeValue
                 ret.shouldCollect = true
                 ret.key = key
                 ret.renderMethods = calaMatches.bind(null, textTemplate)
