@@ -84,11 +84,11 @@ function complierTextNode(node, vm) {
                     }
                 }
                 expression = `return ${expression}`
-                expression = new Function('data', `
-                    with(data) {
+                expression = new Function('vm', `
+                    with(vm) {
                         ${expression}
                     }
-                `)(data)
+                `)(vm)
                 // 根据data中key对应的值替换nodeValue
                 // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
                 // 这样可以解决一个文本节点有多次使用{{}}的情况
