@@ -19,7 +19,7 @@ new EasyMvvm({
     methods: {
         change() {
             this.msg = 'hello'
-            this.msg2 = 'data is changed!!' + (++i)
+            this.msg2 = 'data is changed!!'
         },
         input(e) {
             this.msg = e.target.value
