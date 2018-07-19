@@ -10,6 +10,7 @@ export function defineReactive(data) {
         return val
       },
       set: function reactiveSetter(newVal) {
+        if (val === newVal) return val
         val = newVal
         eventBus.emit(`${key}-render`)
         return newVal
