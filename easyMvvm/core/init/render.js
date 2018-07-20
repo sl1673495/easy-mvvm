@@ -228,9 +228,7 @@ function parseLoopCreator(node, value, vm) {
         lastLoopNodes = loopNodes
     }
     // 注册事件触发
-    console.log(right)
     eventBus.on(`${right}-render`, parseLoop)
-    console.log(eventBus)
     return parseLoop
 }
 
