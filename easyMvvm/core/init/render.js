@@ -106,18 +106,19 @@ function complierTextNode(node, vm) {
                     expression = `return ${expression}`
                     // 利用eval实现解析模板内表达式
                     expression = evalWithScope(vm, expression)
+                    // 解析未出错 则在数据变化触发渲染
+                    retMatchedKeys.push(...currentMatchedKeys)
                 }catch (e) {
-                    // 解析出错 恢复原始字符串
                     expression = expressionCache
                 }
-
-                // 根据data中key对应的值替换nodeValue
-                // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
-                // 这样可以解决一个文本节点有多次使用{{}}的情况
-                l === 0 ?
-                    result = textTemp.replace(matches[l], expression) :
-                    result = result.replace(matches[l], expression)
-                retMatchedKeys.push(...currentMatchedKeys)
+                finally {
+                    // 根据data中key对应的值替换nodeValue
+                    // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
+                    // 这样可以解决一个文本节点有多次使用{{}}的情况
+                    l === 0 ?
+                        result = textTemp.replace(matches[l], expression) :
+                        result = result.replace(matches[l], expression)
+                }
             }
             if (retMatchedKeys.length) {
                 ret.keys = retMatchedKeys

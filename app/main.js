@@ -9,7 +9,7 @@ new EasyMvvm({
                   <div>
                     <h1 e-for="item in items">this is {{item}} {{++item}}</h1>
                     <p>{{msg}}</p>
-                    <p>{{msg1}}</p>
+                    <p>123123{{msg1-=-=-=}}</p>
                     <button @click=change>change</button>
                     <input @input=input />
                   </div>
