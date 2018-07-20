@@ -8,7 +8,7 @@ export default class EventEmitter {
   }
 
   emit(name, payload) {
-    const cbs = this._event[name]
+    const cbs = this._event[name] || []
     for (let i = 0, len = cbs.length; i < len; i++) {
       cbs[i](payload)
     }
