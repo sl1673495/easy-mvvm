@@ -75,10 +75,7 @@ function complierTextNode(node, vm) {
     // 根据{{}}去匹配命中的nodeValue
     const textTemplate = node.nodeValue
     const matches = node.nodeValue.match(templateRegExp)
-    const ret = {
-        shouldCollect: false,
-        key: null,
-    }
+    const ret = {}
     if (matches && matches.length) {
         // 把通过匹配模板如{{msg}}和data渲染dom的方法返回出去 保存在事件监听里
         const calcMatches = (textTemp) => {
@@ -127,8 +124,8 @@ function complierTextNode(node, vm) {
             }
             node.nodeValue = result
         }
-        ret.renderMethods = calcMatches.bind(null, textTemplate)
         calcMatches(textTemplate)
+        ret.renderMethods = calcMatches.bind(null, textTemplate)
     }
     return ret
 }

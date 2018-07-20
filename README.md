@@ -47,10 +47,12 @@ new EasyMvvm({
 在setter中通过dep.notify通知watcher进行视图更新
 easy-mvvm简化了这部分的实现
 ```
-const calaMatches = (textTemp) => {
+const calcMatches = (textTemp) => {
             let result, l = 0, retMatchedKeys = [], len = matches.length, dataKeys = Object.keys(data)
             // 循环这个文字节点中的{{}}模版， 一个文字节点中可能会有多个{{}}
             for (; l < len; l++) {
+                // 缓存最开始的模板
+                let expressionCache = matches[l]
                 // 替换{{}}得到表达式 currentMatchedKeys记录这单个模板中有几个key匹配到了
                 let currentMatchedKeys = []
                 let expression = replaceCurly(matches[l])
@@ -68,9 +70,16 @@ const calaMatches = (textTemp) => {
                         }
                     }
                 }
-                expression = `return ${expression}`
-                // 利用eval实现解析模板内表达式
-                expression = evalWithScope(vm, expression)
+
+                try {
+                    expression = `return ${expression}`
+                    // 利用eval实现解析模板内表达式
+                    expression = evalWithScope(vm, expression)
+                }catch (e) {
+                    // 解析出错 恢复原始字符串
+                    expression = expressionCache
+                }
+
                 // 根据data中key对应的值替换nodeValue
                 // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
                 // 这样可以解决一个文本节点有多次使用{{}}的情况
