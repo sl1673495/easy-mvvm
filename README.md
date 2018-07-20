@@ -87,17 +87,23 @@ const calaMatches = (textTemp) => {
 ```
 这部分是文字节点render的核心方法， 注意
 ```
-ret.shouldCollect = true
-ret.key = key
+ret.keys = retMatchedKeys
 ret.renderMethods = calaMatches.bind(null, textTemplate)
 ```
 最后这个ret中把这个方法当做一个属性返回出去
 ```
-const { shouldCollect, key: watchKey, renderMethods } = complierTextNode(node, vm)
-if (shouldCollect) {
-  // 在setter里emit这个事件 实现驱动视图变化
-   eventBus.on(`${watchKey}-render`, renderMethods)
-}
+const { keys: watchKeys, renderMethods } = complierTextNode(node, vm)
+                if (
+                    watchKeys && 
+                    watchKeys.length &&
+                    !forbidEvent
+                ) {
+                    // 在setter里emit这个事件 实现驱动视图变化
+                    let j = 0, klen = watchKeys.length
+                    for (; j < klen; j++) {
+                        eventBus.on(`${watchKeys[j]}-render`, renderMethods)
+                    }
+                }
 ```
 这个watchKey就是观测的数据的key，我们将这个renderMethods注册到eventBus中
 再来看数据劫持部分的逻辑
