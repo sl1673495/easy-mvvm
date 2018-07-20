@@ -8,7 +8,7 @@ new EasyMvvm({
     template: `
                   <div>
                     <h1 e-for="item in items">this is {{item}} {{++item}}</h1>
-                    <p>{{msg +-*}}</p>
+                    <p>{{msg}}</p>
                     <p>{{msg1}}</p>
                     <button @click=change>change</button>
                     <input @input=input />
