@@ -21,7 +21,7 @@ new EasyMvvm({
     },         
     mounted() {
        setTimeout(() => {
-           this.msg1 = '我在mounted时被改变了'
+           this.msg1 = '我在mounted时被改变了(延迟是因为定时器演示效果)'
        }, 1000);
     },
     data: {
