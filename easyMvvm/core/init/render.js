@@ -85,19 +85,17 @@ function complierTextNode(node, vm) {
         // 把通过匹配模板如{{msg}}和data渲染dom的方法返回出去 保存在事件监听里
         const calcMatches = (textTemp) => {
             let result = textTemp,
-                l = 0,
                 retMatchedKeys = [],
-                len = matches.length,
                 vmKeys = Object.keys(vm)
 
             // 循环这个文字节点中的{{}}模版， 一个文字节点中可能会有多个{{}}
-            for (; l < len; l++) {
+            for (let match of matches) {
                 // 缓存最开始的模板
-                let expressionCache = matches[l]
+                let expressionCache = match
 
                 // 替换{{}}得到表达式 currentMatchedKeys记录这单个模板中有几个key匹配到了
                 let currentMatchedKeys = []
-                let expression = replaceCurly(matches[l])
+                let expression = replaceCurly(match)
 
                 // 收集这个模板中所依赖的key
                 // 如果{{}}中的字符串完全是data中的key 就直接收集
@@ -106,9 +104,7 @@ function complierTextNode(node, vm) {
                     currentMatchedKeys.push(expression)
                 } else {
                     // 否则循环data中的所有key去模板中找匹配项
-                    let j = 0, klen = vmKeys.length
-                    for (; j < klen; j++) {
-                        const vmKey = vmKeys[j]
+                    for (let vmKey of vmKeys) {
                         if (expression.includes(vmKey)) {
                             currentMatchedKeys.push(vmKey)
                         }
@@ -126,7 +122,7 @@ function complierTextNode(node, vm) {
                     expression = expressionCache
                 }finally {
                     // 根据data中key对应的值替换nodeValue
-                    result = result.replace(matches[l], expression)
+                    result = result.replace(match, expression)
                 }
             }
 
