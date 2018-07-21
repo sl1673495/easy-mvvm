@@ -294,6 +294,7 @@ function recursiveReplace(node, replaceTarget, resource, replaceIndex) {
 #### computed的实现
 computed的实现定义在core/init/state里
 
+```
 /**
  * computed的核心思想:
  * 以下以这个computed为例：{
@@ -357,4 +358,5 @@ function initComputed(vm) {
         }
     }
 }
+```
 
