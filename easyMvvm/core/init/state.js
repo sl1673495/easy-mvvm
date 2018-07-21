@@ -57,7 +57,7 @@ function initComputed(vm) {
             }
         })
     }
-    const computedOptions = {}
+    const computedOptions = vm._computedOptions = {}
     // 循环去定义在trigger的时候将computedOptions中相应的key(computed的key)里的
     // deps依赖(data中对应的key)收集起来
     for (let computedKey in computed) {

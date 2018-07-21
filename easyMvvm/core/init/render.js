@@ -41,15 +41,20 @@ function complierNodes(nodes, vm, forbidEvent) {
         } else {
             if (!isEmptyNode(node)) {
                 const { keys: watchKeys, renderMethods } = complierTextNode(node, vm)
+                const {_computedOptions} = vm
                 if (
                     watchKeys && 
-                    watchKeys.length &&
-                    !forbidEvent
+                    watchKeys.length
                 ) {
                     // 在setter里emit这个事件 实现驱动视图变化
                     let j = 0, klen = watchKeys.length
                     for (; j < klen; j++) {
-                        eventBus.on(`${watchKeys[j]}-render`, renderMethods)
+                        const watchKey = watchKeys[j]
+                        if (
+                            !forbidEvent ||
+                            watchKey in _computedOptions
+                        )
+                        eventBus.on(`${watchKey}-render`, renderMethods)
                     }
                 }
             }
