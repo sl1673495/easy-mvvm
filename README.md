@@ -320,9 +320,11 @@ computed的实现定义在core/init/state里
  * @returns {*}
  */
 function initComputed(vm) {
+    const {data = {}, computed = {}} = vm._options
+
     // 创建一个事件中心用来收集computed方法在data里的依赖
     const collectComputedEm = new EventEmitter()
-    const {data = {}, computed = {}} = vm._options
+
     // clone一个vm.data 防止污染源对象 只针对单层数据
     const cloneData = Object.assign({}, data)
     for (let key in cloneData) {
@@ -333,7 +335,9 @@ function initComputed(vm) {
             }
         })
     }
+
     const computedOptions = vm._computedOptions = {}
+
     // 循环去定义在trigger的时候将computedOptions中相应的key(computed的key)里的
     // deps依赖(data中对应的key)收集起来
     for (let computedKey in computed) {
@@ -341,6 +345,7 @@ function initComputed(vm) {
             const opt = (computedOptions[computedKey] || (computedOptions[computedKey] = {}))
             ;(opt.deps || (opt.deps = [])).push(key)
         })
+
         const computedFn = computed[computedKey]
         // 执行一次绑定上下文为cloneData的计算函数 收集到该计算属性依赖的所有key
         computedFn.call(cloneData)
