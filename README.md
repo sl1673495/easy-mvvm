@@ -5,20 +5,33 @@
 https://sl1673495.github.io/easy-mvvm/
 ## 使用方法
 ```
+
+let i = 0
+
 new EasyMvvm({
     el: '#app',
     template: `
                   <div>
-                    <h1 e-for="item in items">this is {{item}} {{++item}}</h1>
+                    <h2>e-for="item in items"</h2>
+                    <p e-for="item in items">this is {{item}}</p>
+                     <button @click=change>items数组中数字改变</button>
+                    <h2>msg</h2>
                     <p>{{msg}}</p>
+                    <h2>msg1</h2>
                     <p>{{msg1}}</p>
-                    <button @click=change>change</button>
-                    <input @input=input />
+                    <h2>computed(msg + msg1)</h2>
+                    <p>{{sum}}</p>
+                    <input @input=input placeholder="改变msg1的内容" />
                   </div>
                 `,
     created() {
         this.msg1 = '我在created时被改变了'
-    },         
+    },
+    computed: {
+        sum() {
+            return this.msg + this.msg1
+        }
+    },
     mounted() {
        setTimeout(() => {
            this.msg1 = '我在mounted时被改变了(延迟是因为定时器演示效果)'
@@ -28,11 +41,15 @@ new EasyMvvm({
         msg: 'easy-mvvm',
         msg1: 'easy-local',
         msg2: 'hello world',
-        items: [1,2,3], 
+        items: [1,2,3],
         flag: true
     },
     methods: {
         change() {
+            this.msg2 = 'data is changed!!' + (++i)
+            setTimeout(() => {
+                this.msg2 = 'change async'
+            }, 1000)
             this.items = [i++, i++, i++]
         },
         input(e) {
@@ -40,6 +57,7 @@ new EasyMvvm({
         }
     },
 })
+
 ```
 ## 与vue实现的一些不同
 #### 数据驱动视图的变化：
@@ -48,7 +66,7 @@ new EasyMvvm({
 easy-mvvm简化了这部分的实现
 ```
 const calcMatches = (textTemp) => {
-            let result, l = 0, retMatchedKeys = [], len = matches.length, dataKeys = Object.keys(data)
+            let result, l = 0, retMatchedKeys = [], len = matches.length, vmKeys = Object.keys(vm)
             // 循环这个文字节点中的{{}}模版， 一个文字节点中可能会有多个{{}}
             for (; l < len; l++) {
                 // 缓存最开始的模板
@@ -62,9 +80,9 @@ const calcMatches = (textTemp) => {
                     currentMatchedKeys.push(expression)
                 } else {
                     // 否则循环data中的所有key去模板中找匹配项
-                    let j = 0, klen = dataKeys.length
+                    let j = 0, klen = vmKeys.length
                     for (; j < klen; j++) {
-                        const dataKey = dataKeys[j]
+                        const dataKey = vmKeys[j]
                         if (expression.includes(dataKey)) {
                             currentMatchedKeys.push(dataKey)
                         }
@@ -263,11 +281,80 @@ function recursiveReplace(node, replaceTarget, resource, replaceIndex) {
         for (let childNode of node.childNodes) {
             recursiveReplace(childNode, replaceTarget, resource, replaceIndex)
         }
-    }
-    return node
+
+
+
+      return node
 }
 
 ```
 注释写的很清楚了 因为没有vue vnode和complier的实现
 所以比较繁琐 需要手动操作dom来实现
+
+#### computed的实现
+computed的实现定义在core/init/state里
+
+/**
+ * computed的核心思想:
+ * 以下以这个computed为例：{
+ *      sum() {return this.data1 + this.data2}
+ * }
+ * clone一个vm的data，给这个data的每一项key定义get事件，
+ * get的时候让事件中心触发一个trigger事件，payload就是这个触发get的key
+ * 定义computedOptions对象，用来记录每个computedKey所依赖的data里的key
+ * 然后遍历computed对象，获取computed方法
+ * 将上下文设立成clone的data，那么在执行求值的时候就会触发我们的trigger事件
+ * 就可以往相应的computedOptions[computedKey].deps里push触发事件的data的key
+ * 就收集到{ sum: { deps: [data1, data2]}} 这样的依赖集合。
+ * 最后我们给vm的实例上define我们的computedKey 并且get就返回computedFn在上下文为vm时的执行结果,
+ * 因为在render的时候读到sum这个属性 会给eventBus中注册sum-render时更新视图的方法
+ * 所以我们要定义在触发data1-render或data2-render的时候也要触发sum-render去更新视图
+ * @param vm
+ * @returns {*}
+ */
+function initComputed(vm) {
+    // 创建一个事件中心用来收集computed方法在data里的依赖
+    const collectComputedEm = new EventEmitter()
+    const {data = {}, computed = {}} = vm._options
+    // clone一个vm.data 防止污染源对象 只针对单层数据
+    const cloneData = Object.assign({}, data)
+    for (let key in cloneData) {
+        // 在数据被get时触发trigger事件 带出相应的key
+        Object.defineProperty(cloneData, key, {
+            get() {
+                collectComputedEm.emit('trigger', key)
+            }
+        })
+    }
+    const computedOptions = {}
+    // 循环去定义在trigger的时候将computedOptions中相应的key(computed的key)里的
+    // deps依赖(data中对应的key)收集起来
+    for (let computedKey in computed) {
+        collectComputedEm.on('trigger',(key) => {
+            const opt = (computedOptions[computedKey] || (computedOptions[computedKey] = {}))
+            ;(opt.deps || (opt.deps = [])).push(key)
+        })
+        const computedFn = computed[computedKey]
+        // 执行一次绑定上下文为cloneData的计算函数 收集到该计算属性依赖的所有key
+        computedFn.call(cloneData)
+        // 收集完毕以后将这次事件清空， 防止无意义的触发
+        collectComputedEm.clear()
+
+        // 将computedKey定义到vm上， 改写访问方法
+        shareProperty.get = function () {
+            return computedFn.call(vm)
+        }
+        Object.defineProperty(vm, computedKey, shareProperty)
+    }
+
+    // 依赖项更新视图的同时 也要更新computed对应的视图
+    for (let computedOptionKey in computedOptions) {
+        const deps = computedOptions[computedOptionKey].deps || []
+        for (let dep of deps) {
+            eventBus.on(`${dep}-render`, () => {
+                eventBus.emit(`${computedOptionKey}-render`)
+            })
+        }
+    }
+}
 

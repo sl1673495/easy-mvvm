@@ -7,15 +7,25 @@ new EasyMvvm({
     el: '#app',
     template: `
                   <div>
-                    <h1 e-for="item in items">this is {{item}} {{++item}}</h1>
+                    <h2>e-for="item in items"</h2>
+                    <p e-for="item in items">this is {{item}}</p>
+                     <button @click=change>items数组中数字改变</button>
+                    <h2>msg</h2>
                     <p>{{msg}}</p>
+                    <h2>msg1</h2>
                     <p>{{msg1}}</p>
-                    <button @click=change>change</button>
-                    <input @input=input />
+                    <h2>computed(msg + msg1)</h2>
+                    <p>{{sum}}</p>
+                    <input @input=input placeholder="改变msg1的内容" />
                   </div>
                 `,
     created() {
         this.msg1 = '我在created时被改变了'
+    },
+    computed: {
+        sum() {
+            return this.msg + this.msg1
+        }
     },
     mounted() {
        setTimeout(() => {

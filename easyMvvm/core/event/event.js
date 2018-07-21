@@ -13,4 +13,7 @@ export default class EventEmitter {
       cbs[i](payload)
     }
   }
+  clear() {
+    this._event = {}
+  }
 }

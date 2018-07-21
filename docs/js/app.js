@@ -21,6 +21,9 @@ class EventEmitter {
       cbs[i](payload);
     }
   }
+  clear() {
+    this._event = {};
+  }
 }
 // CONCATENATED MODULE: ./easyMvvm/core/event/instance.js
 
@@ -50,40 +53,112 @@ function defineReactive(data) {
 // CONCATENATED MODULE: ./easyMvvm/core/init/state.js
 
 
+
+
+const shareProperty = {
+    enumerable: true,
+    configurable: true
+};
+
 /* harmony default export */ var state = (function (vm) {
-  const { data = {}, methods = {} } = vm._options;
-  initData(vm, data);
-  initMethods(vm, methods);
-  defineReactive(data);
+    const { data = {} } = vm._options;
+    initData(vm);
+    initMethods(vm);
+    initComputed(vm);
+    defineReactive(data);
 });
 
-function initData(vm, data) {
-  const keys = Object.keys(data);
-  for (const key of keys) {
-    if (!(key in vm)) {
-      proxy(vm, key, data);
-    }
-  }
+function initData(vm) {
+    const { data = {} } = vm._options;
+    proxyToVm(vm, data);
 }
 
-function initMethods(vm, methods) {
-  const keys = Object.keys(methods);
-  for (const key of keys) {
-    if (!(key in vm)) {
-      proxy(vm, key, methods);
+function initMethods(vm) {
+    const { methods = {} } = vm._options;
+    proxyToVm(vm, methods);
+}
+
+/**
+ * computed的核心思想:
+ * 以下以这个computed为例：{
+ *      sum() {return this.data1 + this.data2}
+ * }
+ * clone一个vm的data，给这个data的每一项key定义get事件，
+ * get的时候让事件中心触发一个trigger事件，payload就是这个触发get的key
+ * 定义computedOptions对象，用来记录每个computedKey所依赖的data里的key
+ * 然后遍历computed对象，获取computed方法
+ * 将上下文设立成clone的data，那么在执行求值的时候就会触发我们的trigger事件
+ * 就可以往相应的computedOptions[computedKey].deps里push触发事件的data的key
+ * 就收集到{ sum: { deps: [data1, data2]}} 这样的依赖集合。
+ * 最后我们给vm的实例上define我们的computedKey 并且get就返回computedFn在上下文为vm时的执行结果,
+ * 因为在render的时候读到sum这个属性 会给eventBus中注册sum-render时更新视图的方法
+ * 所以我们要定义在触发data1-render或data2-render的时候也要触发sum-render去更新视图
+ * @param vm
+ * @returns {*}
+ */
+function initComputed(vm) {
+    // 创建一个事件中心用来收集computed方法在data里的依赖
+    const collectComputedEm = new EventEmitter();
+    const { data = {}, computed = {} } = vm._options;
+    // clone一个vm.data 防止污染源对象 只针对单层数据
+    const cloneData = Object.assign({}, data);
+    for (let key in cloneData) {
+        // 在数据被get时触发trigger事件 带出相应的key
+        Object.defineProperty(cloneData, key, {
+            get() {
+                collectComputedEm.emit('trigger', key);
+            }
+        });
     }
-  }
+    const computedOptions = {};
+    // 循环去定义在trigger的时候将computedOptions中相应的key(computed的key)里的
+    // deps依赖(data中对应的key)收集起来
+    for (let computedKey in computed) {
+        collectComputedEm.on('trigger', key => {
+            const opt = computedOptions[computedKey] || (computedOptions[computedKey] = {});(opt.deps || (opt.deps = [])).push(key);
+        });
+        const computedFn = computed[computedKey];
+        // 执行一次绑定上下文为cloneData的计算函数 收集到该计算属性依赖的所有key
+        computedFn.call(cloneData);
+        // 收集完毕以后将这次事件清空， 防止无意义的触发
+        collectComputedEm.clear();
+
+        // 将computedKey定义到vm上， 改写访问方法
+        shareProperty.get = function () {
+            return computedFn.call(vm);
+        };
+        Object.defineProperty(vm, computedKey, shareProperty);
+    }
+
+    // 依赖项更新视图的同时 也要更新computed对应的视图
+    for (let computedOptionKey in computedOptions) {
+        const deps = computedOptions[computedOptionKey].deps || [];
+        for (let dep of deps) {
+            eventBus.on(`${dep}-render`, () => {
+                eventBus.emit(`${computedOptionKey}-render`);
+            });
+        }
+    }
+}
+
+function proxyToVm(vm, source) {
+    const keys = Object.keys(source);
+    for (const key of keys) {
+        if (!(key in vm)) {
+            proxy(vm, key, source);
+        }
+    }
 }
 
 function proxy(obj, key, source) {
-  Object.defineProperty(obj, key, {
-    get() {
-      return source[key];
-    },
-    set(val) {
-      source[key] = val;
-    }
-  });
+    shareProperty.get = function () {
+        return source[key];
+    };
+
+    shareProperty.set = function (val) {
+        source[key] = val;
+    };
+    Object.defineProperty(obj, key, shareProperty);
 }
 // CONCATENATED MODULE: ./easyMvvm/util/constant.js
 const LOOP_ATTR = 'e-for';
@@ -150,6 +225,7 @@ function complier(vm) {
     const dom = parseDom(template);
     document.querySelector(el).appendChild(dom);
     complierNodes(dom.childNodes, vm);
+    console.log(eventBus);
     return dom;
 }
 
@@ -194,20 +270,19 @@ function complierTextNode(node, vm) {
     // 根据{{}}去匹配命中的nodeValue
     const textTemplate = node.nodeValue;
     const matches = node.nodeValue.match(templateRegExp);
-    const ret = {
-        shouldCollect: false,
-        key: null
-    };
+    const ret = {};
     if (matches && matches.length) {
         // 把通过匹配模板如{{msg}}和data渲染dom的方法返回出去 保存在事件监听里
-        const calaMatches = textTemp => {
+        const calcMatches = textTemp => {
             let result,
                 l = 0,
                 retMatchedKeys = [],
                 len = matches.length,
-                dataKeys = Object.keys(data);
+                vmKeys = Object.keys(vm);
             // 循环这个文字节点中的{{}}模版， 一个文字节点中可能会有多个{{}}
             for (; l < len; l++) {
+                // 缓存最开始的模板
+                let expressionCache = matches[l];
                 // 替换{{}}得到表达式 currentMatchedKeys记录这单个模板中有几个key匹配到了
                 let currentMatchedKeys = [];
                 let expression = replaceCurly(matches[l]);
@@ -218,30 +293,38 @@ function complierTextNode(node, vm) {
                 } else {
                     // 否则循环data中的所有key去模板中找匹配项
                     let j = 0,
-                        klen = dataKeys.length;
+                        klen = vmKeys.length;
                     for (; j < klen; j++) {
-                        const dataKey = dataKeys[j];
-                        if (expression.includes(dataKey)) {
-                            currentMatchedKeys.push(dataKey);
+                        const vmKey = vmKeys[j];
+                        if (expression.includes(vmKey)) {
+                            currentMatchedKeys.push(vmKey);
                         }
                     }
                 }
-                expression = `return ${expression}`;
-                // 利用eval实现解析模板内表达式
-                expression = evalWithScope(vm, expression);
-                // 根据data中key对应的值替换nodeValue
-                // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
-                // 这样可以解决一个文本节点有多次使用{{}}的情况
-                l === 0 ? result = textTemp.replace(matches[l], expression) : result = result.replace(matches[l], expression);
-                retMatchedKeys.push(...currentMatchedKeys);
+
+                try {
+                    expression = `return ${expression}`;
+                    // 利用eval实现解析模板内表达式
+                    expression = evalWithScope(vm, expression);
+                    // 解析未出错 则在数据变化触发渲染
+                    retMatchedKeys.push(...currentMatchedKeys);
+                } catch (e) {
+                    // 解析出错 将模板恢复成原始状态
+                    expression = expressionCache;
+                } finally {
+                    // 根据data中key对应的值替换nodeValue
+                    // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
+                    // 这样可以解决一个文本节点有多次使用{{}}的情况
+                    l === 0 ? result = textTemp.replace(matches[l], expression) : result = result.replace(matches[l], expression);
+                }
             }
             if (retMatchedKeys.length) {
                 ret.keys = retMatchedKeys;
             }
             node.nodeValue = result;
         };
-        ret.renderMethods = calaMatches.bind(null, textTemplate);
-        calaMatches(textTemplate);
+        calcMatches(textTemplate);
+        ret.renderMethods = calcMatches.bind(null, textTemplate);
     }
     return ret;
 }
@@ -318,6 +401,7 @@ function parseLoopCreator(node, value, vm) {
             targetNode = lastLoopNodes[0];
         }
 
+        // 存放clone节点的数组
         const loopNodes = [];
         // 把模板节点clone出来 交给recursiveReplace批量替换
         // 将类似{{item}}的字符串替换成{{items[0]}}
@@ -327,8 +411,10 @@ function parseLoopCreator(node, value, vm) {
             recursiveReplace(cnode, left, right, index);
             loopNodes.push(cnode);
         });
+
         // 这样再交给complierNodes 就可以直接解析出来了
         const complieredNodes = complierNodes(loopNodes, vm, true /* forbidEvent,循环的触发事件在下面注册 */);
+
         // 将解析完的dom数组循环插入到参考节点后面
         // 每次都将参考节点标记为插入的上一个节点 保证插入顺序
         for (let complieredNode of complieredNodes) {
@@ -406,19 +492,29 @@ new easyMvvm({
     el: '#app',
     template: `
                   <div>
-                    <h1 e-for="item in items">this is {{item}} {{++item}}</h1>
+                    <h2>e-for="item in items"</h2>
+                    <p e-for="item in items">this is {{item}}</p>
+                     <button @click=change>items数组中数字改变</button>
+                    <h2>msg</h2>
                     <p>{{msg}}</p>
+                    <h2>msg1</h2>
                     <p>{{msg1}}</p>
-                    <button @click=change>change</button>
-                    <input @input=input />
+                    <h2>computed(msg + msg1)</h2>
+                    <p>{{sum}}</p>
+                    <input @input=input placeholder="改变msg1的内容" />
                   </div>
                 `,
     created() {
         this.msg1 = '我在created时被改变了';
     },
+    computed: {
+        sum() {
+            return this.msg + this.msg1;
+        }
+    },
     mounted() {
         setTimeout(() => {
-            this.msg1 = '我在mounted时被改变了';
+            this.msg1 = '我在mounted时被改变了(延迟是因为定时器演示效果)';
         }, 1000);
     },
     data: {
@@ -430,6 +526,10 @@ new easyMvvm({
     },
     methods: {
         change() {
+            this.msg2 = 'data is changed!!' + ++main_i;
+            setTimeout(() => {
+                this.msg2 = 'change async';
+            }, 1000);
             this.items = [main_i++, main_i++, main_i++];
         },
         input(e) {

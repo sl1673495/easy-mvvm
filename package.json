@@ -2,7 +2,7 @@
   "name": "dive-into-webpack",
   "version": "1.0.0",
   "scripts": {
-    "build": "rm -rf dist && webpack",
+    "build": "webpack",
     "start": "webpack-dev-server -d --config webpack.config.js"
   },
   "dependencies": {

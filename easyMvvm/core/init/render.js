@@ -24,6 +24,7 @@ function complier(vm) {
     const dom = parseDom(template)
     document.querySelector(el).appendChild(dom)
     complierNodes(dom.childNodes, vm)
+    console.log(eventBus)
     return dom
 }
 
@@ -79,7 +80,7 @@ function complierTextNode(node, vm) {
     if (matches && matches.length) {
         // 把通过匹配模板如{{msg}}和data渲染dom的方法返回出去 保存在事件监听里
         const calcMatches = (textTemp) => {
-            let result, l = 0, retMatchedKeys = [], len = matches.length, dataKeys = Object.keys(data)
+            let result, l = 0, retMatchedKeys = [], len = matches.length, vmKeys = Object.keys(vm)
             // 循环这个文字节点中的{{}}模版， 一个文字节点中可能会有多个{{}}
             for (; l < len; l++) {
                 // 缓存最开始的模板
@@ -93,11 +94,11 @@ function complierTextNode(node, vm) {
                     currentMatchedKeys.push(expression)
                 } else {
                     // 否则循环data中的所有key去模板中找匹配项
-                    let j = 0, klen = dataKeys.length
+                    let j = 0, klen = vmKeys.length
                     for (; j < klen; j++) {
-                        const dataKey = dataKeys[j]
-                        if (expression.includes(dataKey)) {
-                            currentMatchedKeys.push(dataKey)
+                        const vmKey = vmKeys[j]
+                        if (expression.includes(vmKey)) {
+                            currentMatchedKeys.push(vmKey)
                         }
                     }
                 }
@@ -109,9 +110,9 @@ function complierTextNode(node, vm) {
                     // 解析未出错 则在数据变化触发渲染
                     retMatchedKeys.push(...currentMatchedKeys)
                 }catch (e) {
+                    // 解析出错 将模板恢复成原始状态
                     expression = expressionCache
-                }
-                finally {
+                }finally {
                     // 根据data中key对应的值替换nodeValue
                     // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
                     // 这样可以解决一个文本节点有多次使用{{}}的情况
