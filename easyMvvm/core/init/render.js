@@ -24,8 +24,6 @@ function complier(vm) {
     const dom = parseDom(template)
     document.querySelector(el).appendChild(dom)
     complierNodes(dom.childNodes, vm)
-    console.log(eventBus)
-    return dom
 }
 
 /**
@@ -53,8 +51,9 @@ function complierNodes(nodes, vm, forbidEvent) {
                         if (
                             !forbidEvent ||
                             watchKey in _computedOptions
-                        )
-                        eventBus.on(`${watchKey}-render`, renderMethods)
+                        ) {
+                            eventBus.on(`${watchKey}-render`, renderMethods)
+                        }
                     }
                 }
             }
@@ -85,15 +84,23 @@ function complierTextNode(node, vm) {
     if (matches && matches.length) {
         // 把通过匹配模板如{{msg}}和data渲染dom的方法返回出去 保存在事件监听里
         const calcMatches = (textTemp) => {
-            let result, l = 0, retMatchedKeys = [], len = matches.length, vmKeys = Object.keys(vm)
+            let result = textTemp,
+                l = 0,
+                retMatchedKeys = [],
+                len = matches.length,
+                vmKeys = Object.keys(vm)
+
             // 循环这个文字节点中的{{}}模版， 一个文字节点中可能会有多个{{}}
             for (; l < len; l++) {
                 // 缓存最开始的模板
                 let expressionCache = matches[l]
+
                 // 替换{{}}得到表达式 currentMatchedKeys记录这单个模板中有几个key匹配到了
                 let currentMatchedKeys = []
                 let expression = replaceCurly(matches[l])
-                // 如果{{}}中的字符串完全是data中的key 就直接赋值
+
+                // 收集这个模板中所依赖的key
+                // 如果{{}}中的字符串完全是data中的key 就直接收集
                 // 否则用正则解析内容中是否有匹配data里的key的值
                 if (expression in data) {
                     currentMatchedKeys.push(expression)
@@ -119,19 +126,19 @@ function complierTextNode(node, vm) {
                     expression = expressionCache
                 }finally {
                     // 根据data中key对应的值替换nodeValue
-                    // 在循环替换的过程中第一次使用textTemp 每次循环后把result变更成替换后的值
-                    // 这样可以解决一个文本节点有多次使用{{}}的情况
-                    l === 0 ?
-                        result = textTemp.replace(matches[l], expression) :
-                        result = result.replace(matches[l], expression)
+                    result = result.replace(matches[l], expression)
                 }
             }
+
             if (retMatchedKeys.length) {
                 ret.keys = retMatchedKeys
             }
+
             node.nodeValue = result
         }
+
         calcMatches(textTemplate)
+
         ret.renderMethods = calcMatches.bind(null, textTemplate)
     }
     return ret
@@ -148,9 +155,11 @@ function complierNormalNode(node, vm) {
     for (i = 0, len = attrs.length; i < len; i++) {
         const name = attrs[i].nodeName
         const value = attrs[i].nodeValue
+
         if (name[0] === EVENT_ATTR) {
             parseEvents(node, name, value, vm)
         }
+
         if (name === LOOP_ATTR) {
             const parseLoop = parseLoopCreator(node, value, vm)
             parseLoop()
@@ -192,8 +201,9 @@ function parseLoopCreator(node, value, vm) {
     // right对应vm data中的数组
     // 如 item in items
     const [left, right] = value.split('in')
-    // 拿到vm中的对应数组
+
     const parseLoop = () => {
+        // 拿到vm中的对应数组
         const loopResource = vm[right]
         if (!loopResource) {
             return
@@ -243,6 +253,7 @@ function parseLoopCreator(node, value, vm) {
         }
         lastLoopNodes = loopNodes
     }
+
     // 注册事件触发
     eventBus.on(`${right}-render`, parseLoop)
     return parseLoop
