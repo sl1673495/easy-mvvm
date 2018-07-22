@@ -152,10 +152,8 @@ function compileNormalNode(node, vm) {
         eventValue
     } = resolveAttrs(node.attributes)
 
-    let parseLoop
-
     if (loopAttr) {
-        parseLoop = parseLoopCreator(node, loopValue, vm)
+        const parseLoop = parseLoopCreator(node, loopValue, vm)
         parseLoop()
     } else if (eventAttr) {
         // loop的节点会被编译成新的节点 再重新走compileNormalNode
@@ -174,7 +172,8 @@ function compileNormalNode(node, vm) {
 function parseEvents(node, name, value, vm) {
     const eventName = name.replace(EVENT_ATTR, '')
     const {args, eventMethod} = resolveEvent(value)
-    let handleMethod = vm[eventMethod].bind(vm)
+
+    let handleMethod
 
     if (args) {
         let compiledArgs = evalWithScope(vm, `
@@ -184,6 +183,8 @@ function parseEvents(node, name, value, vm) {
             return genArray(${args})
         `)
         handleMethod = vm[eventMethod].bind(vm, ...compiledArgs)
+    }else {
+        handleMethod = vm[eventMethod].bind(vm)
     }
 
     node.addEventListener(eventName, handleMethod)
