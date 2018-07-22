@@ -113,12 +113,5 @@ function proxy(obj, key, source) {
     shareProperty.set = function (val) {
         source[key] = val
     }
-    Object.defineProperty(obj, key, {
-        get: function() {
-            return source[key]
-        },
-        set: function (val) {
-            source[key] = val
-        }
-    })
+    Object.defineProperty(obj, key, shareProperty)
 }
