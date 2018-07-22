@@ -8,15 +8,16 @@ new EasyMvvm({
     template: `
                   <div>
                     <h2>e-for="item in items"</h2>
-                    <p e-for="item in items">this is {{item}}</p>
-                     <button @click=change>items数组中数字改变</button>
+                    <p e-for="item in items">
+                        <button e-bind-click=change(item)>{{item}} items数组中的项</button>
+                    </p>
                     <h2>msg</h2>
                     <p>{{msg}}</p>
                     <h2>msg1</h2>
                     <p>{{msg1}}</p>
                     <h2>computed(msg + msg1)</h2>
                     <p>{{sum}}</p>
-                    <input @input=input placeholder="改变msg1的内容" />
+                    <input e-bind-input="input" placeholder="改变msg1的内容" />
                   </div>
                 `,
     created() {
@@ -40,15 +41,18 @@ new EasyMvvm({
         flag: true
     },
     methods: {
-        change() {
-            this.msg2 = 'data is changed!!' + (++i)
+        change(item) {
+            console.log(item)
+            this.msg1 = 'data is changed!!' + (++i)
             setTimeout(() => {
                 this.msg2 = 'change async'
             }, 1000)
             this.items = [i++, i++, i++]
         },
         input(e) {
+            console.log(e.target.value)
             this.msg1 = e.target.value
+            console.log(this.msg1)
         }
     },
 })

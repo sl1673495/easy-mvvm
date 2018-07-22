@@ -46,6 +46,8 @@ function initMethods(vm) {
 function initComputed(vm) {
     const {data = {}, computed = {}} = vm._options
 
+    if (!computed) return
+
     // 创建一个事件中心用来收集computed方法在data里的依赖
     const collectComputedEm = new EventEmitter()
 
@@ -111,5 +113,12 @@ function proxy(obj, key, source) {
     shareProperty.set = function (val) {
         source[key] = val
     }
-    Object.defineProperty(obj, key, shareProperty)
+    Object.defineProperty(obj, key, {
+        get: function() {
+            return source[key]
+        },
+        set: function (val) {
+            source[key] = val
+        }
+    })
 }

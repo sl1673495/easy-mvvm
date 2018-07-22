@@ -1,4 +1,4 @@
-import { LOOP_ATTR } from './constant'
+import { LOOP_ATTR, EVENT_ATTR } from './constant'
 
 export const parseDom = (domText) => {
   const ele = document.createElement('div')
@@ -39,4 +39,56 @@ export const isLoopNode = (node) => {
 // 替换花括号
 export const replaceCurly = str => str.slice(2, str.length - 2).trim()
 
+// 替换小括号
+export const replaceBracket = str => str.slice(1, str.length - 1).trim()
+
 export const replaceSpace = str => str.replace(/\s/g, '')
+
+// 解析标签
+export const resolveAttrs = (attrs) => {
+    if (!attrs || !attrs.length) {
+      return {}
+    }
+
+    let loopAttr,
+        loopValue,
+        eventAttr,
+        eventValue
+
+    for (let {nodeName: name, nodeValue: value} of attrs) {
+        if (name === LOOP_ATTR) {
+            loopAttr = name
+            loopValue = value
+        }
+        if (name.includes(EVENT_ATTR)) {
+            eventAttr = name
+            eventValue = value
+        }
+    }
+
+    return {
+        loopAttr,
+        loopValue,
+        eventAttr,
+        eventValue
+    }
+}
+
+// 解析事件标签
+export const resolveEvent = (eventValue) => {
+  let args,
+      eventMethod
+  const argRegExp = /\(.*\)/
+  const argMatches = eventValue.match(argRegExp)
+  if (argMatches)  {
+    const match = argMatches[0]
+    args = replaceBracket(match).split(',')
+    eventMethod = eventValue.replace(match, '')
+  }else {
+      eventMethod = eventValue
+  }
+  return {
+      args,
+      eventMethod
+  }
+}
