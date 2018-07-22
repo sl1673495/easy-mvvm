@@ -166,18 +166,16 @@ Object.defineProperty(data, keys[i], {
  */
 function complierNormalNode(node, vm) {
     const attrs = node.attributes
-    let i, len
-    for (i = 0, len = attrs.length; i < len; i++) {
-        const name = attrs[i].nodeName
-        const value = attrs[i].nodeValue
-        if (name[0] === EVENT_ATTR) {
-            parseEvents(node, name, value, vm)
+        for (let {nodeName: name, nodeValue: value} of attrs) {
+            if (name[0] === EVENT_ATTR) {
+                parseEvents(node, name, value, vm)
+            }
+
+            if (name === LOOP_ATTR) {
+                const parseLoop = parseLoopCreator(node, value, vm)
+                parseLoop()
+            }
         }
-        if (name === LOOP_ATTR) {
-            const parseLoop = parseLoopCreator(node, value, vm)
-            parseLoop()
-        }
-    }
 }
 
 /**
@@ -214,8 +212,9 @@ function parseLoopCreator(node, value, vm) {
     // right对应vm data中的数组
     // 如 item in items
     const [left, right] = value.split('in')
-    // 拿到vm中的对应数组
+
     const parseLoop = () => {
+        // 拿到vm中的对应数组
         const loopResource = vm[right]
         if (!loopResource) {
             return
@@ -224,7 +223,7 @@ function parseLoopCreator(node, value, vm) {
         let targetNode
         if (!lastLoopNodes) {
             // 在第一次调用的时候 往传入的node后面insert
-            // 并且记录下最开始的模板 
+            // 并且记录下最开始的模板
             targetNode = node
             templateNode = node
         } else {
@@ -232,6 +231,7 @@ function parseLoopCreator(node, value, vm) {
             targetNode = lastLoopNodes[0]
         }
 
+        // 存放clone节点的数组
         const loopNodes = []
         // 把模板节点clone出来 交给recursiveReplace批量替换
         // 将类似{{item}}的字符串替换成{{items[0]}}
@@ -241,8 +241,10 @@ function parseLoopCreator(node, value, vm) {
             recursiveReplace(cnode, left, right, index)
             loopNodes.push(cnode)
         })
+
         // 这样再交给complierNodes 就可以直接解析出来了
         const complieredNodes = complierNodes(loopNodes, vm, true /* forbidEvent,循环的触发事件在下面注册 */)
+
         // 将解析完的dom数组循环插入到参考节点后面
         // 每次都将参考节点标记为插入的上一个节点 保证插入顺序
         for (let complieredNode of complieredNodes) {
@@ -262,6 +264,7 @@ function parseLoopCreator(node, value, vm) {
         }
         lastLoopNodes = loopNodes
     }
+
     // 注册事件触发
     eventBus.on(`${right}-render`, parseLoop)
     return parseLoop
@@ -287,8 +290,6 @@ function recursiveReplace(node, replaceTarget, resource, replaceIndex) {
         for (let childNode of node.childNodes) {
             recursiveReplace(childNode, replaceTarget, resource, replaceIndex)
         }
-
-
 
       return node
 }

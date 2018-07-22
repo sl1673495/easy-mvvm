@@ -32,8 +32,7 @@ function complier(vm) {
  * @param {*} vm 
  */
 function complierNodes(nodes, vm, forbidEvent) {
-    for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i]
+    for (let node of nodes) {
         if (!isTextNode(node)) {
             complierNormalNode(node, vm)
         } else {
@@ -45,9 +44,7 @@ function complierNodes(nodes, vm, forbidEvent) {
                     watchKeys.length
                 ) {
                     // 在setter里emit这个事件 实现驱动视图变化
-                    let j = 0, klen = watchKeys.length
-                    for (; j < klen; j++) {
-                        const watchKey = watchKeys[j]
+                    for (let watchKey of watchKeys) {
                         if (
                             !forbidEvent ||
                             watchKey in _computedOptions
@@ -147,11 +144,7 @@ function complierTextNode(node, vm) {
  */
 function complierNormalNode(node, vm) {
     const attrs = node.attributes
-    let i, len
-    for (i = 0, len = attrs.length; i < len; i++) {
-        const name = attrs[i].nodeName
-        const value = attrs[i].nodeValue
-
+    for (let {nodeName: name, nodeValue: value} of attrs) {
         if (name[0] === EVENT_ATTR) {
             parseEvents(node, name, value, vm)
         }
