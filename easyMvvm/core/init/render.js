@@ -48,7 +48,6 @@ function compileNodes(nodes, vm, forbidEvent) {
                     // 在setter里emit这个事件 实现驱动视图变化
                     watchKeys = Array.from(new Set(watchKeys))
                     for (let watchKey of watchKeys) {
-                        console.log(watchKey)
                         if (
                             !forbidEvent ||
                             watchKey in _computedOptions
