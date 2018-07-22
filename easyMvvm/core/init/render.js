@@ -39,14 +39,16 @@ function compileNodes(nodes, vm, forbidEvent) {
             compileNormalNode(node, vm)
         } else {
             if (!isEmptyNode(node)) {
-                const {keys: watchKeys, renderMethods} = compileTextNode(node, vm)
+                let {keys: watchKeys, renderMethods} = compileTextNode(node, vm)
                 const {_computedOptions} = vm
                 if (
                     watchKeys &&
                     watchKeys.length
                 ) {
                     // 在setter里emit这个事件 实现驱动视图变化
+                    watchKeys = Array.from(new Set(watchKeys))
                     for (let watchKey of watchKeys) {
+                        console.log(watchKey)
                         if (
                             !forbidEvent ||
                             watchKey in _computedOptions

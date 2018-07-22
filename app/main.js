@@ -42,7 +42,6 @@ new EasyMvvm({
     },
     methods: {
         change(item) {
-            console.log(item)
             this.msg1 = 'data is changed!!' + (++i)
             setTimeout(() => {
                 this.msg2 = 'change async'
@@ -50,9 +49,7 @@ new EasyMvvm({
             this.items = [i++, i++, i++]
         },
         input(e) {
-            console.log(e.target.value)
             this.msg1 = e.target.value
-            console.log(this.msg1)
         }
     },
 })
