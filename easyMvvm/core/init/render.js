@@ -13,17 +13,17 @@ import {
 
 const templateRegExp = /{{[^\{]*}}/g
 
-export default (vm) => complier(vm)
+export default (vm) => compile(vm)
 
 /**
  * 根据template编译模板 添加绑定事件等
  * @param vm
  */
-function complier(vm) {
+function compile(vm) {
     const { _options: { template, el } } = vm
     const dom = parseDom(template)
     document.querySelector(el).appendChild(dom)
-    complierNodes(dom.childNodes, vm)
+    compileNodes(dom.childNodes, vm)
 }
 
 /**
@@ -31,13 +31,13 @@ function complier(vm) {
  * @param {*} nodes 
  * @param {*} vm 
  */
-function complierNodes(nodes, vm, forbidEvent) {
+function compileNodes(nodes, vm, forbidEvent) {
     for (let node of nodes) {
         if (!isTextNode(node)) {
-            complierNormalNode(node, vm)
+            compileNormalNode(node, vm)
         } else {
             if (!isEmptyNode(node)) {
-                const { keys: watchKeys, renderMethods } = complierTextNode(node, vm)
+                const { keys: watchKeys, renderMethods } = compileTextNode(node, vm)
                 const {_computedOptions} = vm
                 if (
                     watchKeys && 
@@ -61,7 +61,7 @@ function complierNodes(nodes, vm, forbidEvent) {
             !isLoopNode(node)
         ) {
             // 递归调用
-            complierNodes(node.childNodes, vm, forbidEvent)
+            compileNodes(node.childNodes, vm, forbidEvent)
         }
     }
     return nodes
@@ -72,7 +72,7 @@ function complierNodes(nodes, vm, forbidEvent) {
  * @param node
  * @param vm
  */
-function complierTextNode(node, vm) {
+function compileTextNode(node, vm) {
     const { _options: { data } } = vm
     // 根据{{}}去匹配命中的nodeValue
     const textTemplate = node.nodeValue
@@ -142,7 +142,7 @@ function complierTextNode(node, vm) {
  * @param node
  * @param vm
  */
-function complierNormalNode(node, vm) {
+function compileNormalNode(node, vm) {
     const attrs = node.attributes
     for (let {nodeName: name, nodeValue: value} of attrs) {
         if (name[0] === EVENT_ATTR) {
@@ -174,7 +174,7 @@ function parseEvents(node, name, value, vm) {
  * 原理：通过recursiveReplace
  * 将for标签下面的节点里的文本节点中的{{}}
  * 里的变量替换成vm作用域下可以读到的变量
- * 再交给complieredNodes处理完后
+ * 再交给compileedNodes处理完后
  * 通过一定的规则添加到真实dom节点中去
  * @param {*} node 
  * @param {*} value 
@@ -220,14 +220,14 @@ function parseLoopCreator(node, value, vm) {
             loopNodes.push(cnode)
         })
 
-        // 这样再交给complierNodes 就可以直接解析出来了
-        const complieredNodes = complierNodes(loopNodes, vm, true /* forbidEvent,循环的触发事件在下面注册 */)
+        // 这样再交给compileNodes 就可以直接解析出来了
+        const compiledNodes = compileNodes(loopNodes, vm, true /* forbidEvent,循环的触发事件在下面注册 */)
 
         // 将解析完的dom数组循环插入到参考节点后面
         // 每次都将参考节点标记为插入的上一个节点 保证插入顺序
-        for (let complieredNode of complieredNodes) {
-            insertAfter(complieredNode, targetNode)
-            targetNode = complieredNode
+        for (let compiledNode of compiledNodes) {
+            insertAfter(compiledNode, targetNode)
+            targetNode = compiledNode
         }
 
         // 在插入完成后的处理
