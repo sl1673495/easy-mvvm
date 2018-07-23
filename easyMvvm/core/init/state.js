@@ -69,7 +69,13 @@ function initComputed(vm) {
     for (let computedKey in computed) {
         collectComputedEm.on('trigger',(key) => {
             const opt = (computedOptions[computedKey] || (computedOptions[computedKey] = {}))
-            ;(opt.deps || (opt.deps = [])).push(key)
+            if (!opt.deps) {
+                opt.deps = []
+            }
+            // 一次个计算属性中重复出现的key只收集一次
+            if (!(opt.deps.includes(key))) {
+                opt.deps.push(key)
+            }
         })
 
         const computedFn = computed[computedKey]
@@ -84,6 +90,8 @@ function initComputed(vm) {
         }
         Object.defineProperty(vm, computedKey, shareProperty)
     }
+
+    console.log(computedOptions)
 
     // 依赖项更新视图的同时 也要更新computed对应的视图
     for (let computedOptionKey in computedOptions) {
