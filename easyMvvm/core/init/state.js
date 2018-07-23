@@ -91,8 +91,6 @@ function initComputed(vm) {
         Object.defineProperty(vm, computedKey, shareProperty)
     }
 
-    console.log(computedOptions)
-
     // 依赖项更新视图的同时 也要更新computed对应的视图
     for (let computedOptionKey in computedOptions) {
         const deps = computedOptions[computedOptionKey].deps || []

@@ -1,6 +1,6 @@
 import initState from './core/init/state'
 import initRender from './core/init/render'
-import callHook from './core/lifecycle/lifecycle';
+import { callHook, registerUpdated } from './core/lifecycle/lifecycle';
 
 const ProxyMvvm = function (options) {
   this._options = options
@@ -8,6 +8,7 @@ const ProxyMvvm = function (options) {
   callHook('created', this)
   initRender(this)
   callHook('mounted', this)
+  registerUpdated(this)
 }
 
 export default ProxyMvvm
