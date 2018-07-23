@@ -90,8 +90,6 @@ function compileTextNode(node, vm) {
 
             // 循环这个文字节点中的{{}}模版， 一个文字节点中可能会有多个{{}}
             for (let match of matches) {
-                // 缓存最开始的模板
-                let expressionCache = match
 
                 // 替换{{}}得到表达式 currentMatchedKeys记录这单个模板中有几个key匹配到了
                 let currentMatchedKeys = []
@@ -115,15 +113,11 @@ function compileTextNode(node, vm) {
                     expression = `return ${expression}`
                     // 利用eval实现解析模板内表达式
                     expression = evalWithScope(vm, expression)
-                    // 解析未出错 则在数据变化触发渲染
-                    retMatchedKeys.push(...currentMatchedKeys)
-                } catch (e) {
-                    // 解析出错 将模板恢复成原始状态
-                    expression = expressionCache
-                } finally {
                     // 根据data中key对应的值替换nodeValue
                     result = result.replace(match, expression)
-                }
+                    // 解析未出错 则在数据变化触发渲染
+                    retMatchedKeys.push(...currentMatchedKeys)
+                } catch (e) {} 
             }
 
             if (retMatchedKeys.length) {
