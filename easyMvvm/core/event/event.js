@@ -30,9 +30,9 @@ export default class EventEmitter {
   listen(condition, callback) {
     let trigger
     if (condition instanceof RegExp) {
-      trigger = (eventName) => condition.test(eventName)
+      trigger = eventName => condition.test(eventName)
     } else if (typeof condition === 'string') {
-      trigger = (eventName) => eventName.includes(condition)
+      trigger = eventName => eventName.includes(condition)
     }
     this._listeners.push({
       trigger,
