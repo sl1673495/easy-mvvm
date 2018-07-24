@@ -59,11 +59,79 @@ new EasyMvvm({
 })
 
 ```
-## 与vue实现的一些不同
-#### 数据驱动视图的变化：
-在vue中，实现数据变更视图更新的核心逻辑在于劫持data的getter，通过 dep.depend收集依赖，
-在setter中通过dep.notify通知watcher进行视图更新
-easy-mvvm简化了这部分的实现
+## 整体思路
+```
+    将配置对象传入new EasyMvvm构造器
+    core/init/state
+        初始化data, methods, computed等
+        将data, methods, computed里的值都代理到this示例下,
+        并且劫持data的每个key的set方法， 触发事件`${key}-render`
+        computed的实现在下面通过代码讲解
+    core/init/render:
+        compile方法拿到template解析出真实dom
+        compileNodes去解析这些真实dom
+        下面分两种情况
+
+        文本节点：
+            通过compileNormalNode处理， 用正则去解析出{{}}里的内容
+            先收集{{}}里面依赖了我们vm实例下的哪些内容,用数组retMatchedKeys存起来
+            里面的内容可以是个js表达式比如msg + msg2 或者三元表达式，
+            所以用new Function(vm) 把实例传入，并且在内部通过with(vm)
+            将作用域改变成我们的vm实例， 这样只要是合法的js表达式都可以解析出来
+            解析出内容以后把{{}}整个替换成解析完成的内容
+            并且将这个解析的方法保存起来, 遍历retMatchedKeys的内容
+            给我们的事件中心eventBus注册事件(`${key}-render`)，触发的方法就是文本节点编译的方法
+            这样在this下的数据改变的时候，就会自动触发我们的文本节点更新
+        普通节点：
+            通过compileNormalNode处理， 解析出节点上的循环标志(e-for)和事件监听(e-bind)标志
+            在e-for节点的编译中，如果节点中有e-bind标志 我们是不去处理的
+            为什么呢，接下来先看e-for的编译过程：
+            循环节点通过parseLoopCreator生成一个parseLoop方法，
+            这里用函数柯里化的原因是我们想要通过闭包保存e-for节点重新渲染的时候更新的dom节点数组，
+            parseLoop方法的核心逻辑就是通过cloneElement对参照节点进行数组长度次数的clone,
+            在循环中我们要调用recursiveReplace这个递归解析的方法，
+            因为比如我们写e-for="item in items" 在子节点中我们一定会出现{{item}} 或者e-bind-click="get(item)"
+            之类的方法， 但这个东西直接交给我们的compileNodes去解析的话是会报错的，因为我们的vm作用域下并没有这个item
+            所以我们的目标就是通过recursiveReplace把类似于
+            <h1 e-for="item in items">{{item}}</h1>
+            循环生成的
+            <h1>{{item}}</h1>
+            <h1>{{item}}</h1>
+            替换成
+            <h1>{{items[0]}}</h1>
+            <h1>{{items[1]}}</h1>
+            这样再丢给compileNodes处理后返回的节点就是文本编译过后的节点了，
+            这个时候我们的render事件不交给compileNodes去注册
+            而是我们在parseLoopCreator的最后自己注册(items-render, parseLoop)
+            由于parseLoopCreator是个柯里化的函数 所以只有在编译过程中遇到e-for会调用一次
+            之后的items更新触发的渲染只会调用parseLoop方法了。
+
+            到这里我们还没说e-bind节点的事件绑定，事件绑定的处理有两种方法，
+            比如在vue里我们可以@click=change 也可以@click=change(1)
+            但这个其实在编译的时候要分两种情况走，我们解析e-bind后面的value值的括号，
+            如果有括号 那么要通过new Function把括号里的内容传进去 在vm的作用域下解析并返回
+            然后给dom节点注册相应的事件， 通过change.bind(...解析出来的参数) 来把这个事件的真实参数给它
+            所以在e-for的recursiveReplace递归解析子节点的时候 也会把e-bind方法的括号中的值解析为vm作用域下能读到的值
+
+    清楚了数据驱动视图render的逻辑以后就可以来看看computed是怎么实现了，
+        computed的核心思想:
+        以下以这个computed为例：{
+             sum() {return this.data1 + this.data2}
+        }
+        clone一个vm的data，给这个data的每一项key定义get事件，
+        get的时候让一个新的事件中心触发一个trigger事件，payload就是这个触发get的key
+        定义computedOptions对象，用来记录每个computedKey所依赖的data里的key
+        然后遍历computed对象，获取computed方法
+        将上下文设立成clone的data，那么在执行求值的时候就会触发我们的trigger事件
+        就可以往相应的computedOptions[computedKey].deps里push触发事件的data的key
+        就收集到{ sum: { deps: [data1, data2]}} 这样的依赖集合。
+        最后我们给vm的实例上define我们的computedKey 并且get就返回computedFn在上下文为vm时的执行结果,
+        因为在render的时候读到sum这个属性 会给eventBus中注册sum-render时更新视图的方法
+        所以我们要定义在触发data1-render或data2-render的时候也要触发sum-render去更新视图
+
+```
+## 部分代码
+#### 文本节点渲染、更新方法
 ```
  const calcMatches = (textTemp) => {
             let result = textTemp,
