@@ -73,7 +73,7 @@ new EasyMvvm({
         下面分两种情况
 
         文本节点：
-            通过compileNormalNode处理， 用正则去解析出{{}}里的内容
+            通过compileTextNode处理， 用正则去解析出{{}}里的内容
             先收集{{}}里面依赖了我们vm实例下的哪些内容,用数组retMatchedKeys存起来
             里面的内容可以是个js表达式比如msg + msg2 或者三元表达式，
             所以用new Function(vm) 把实例传入，并且在内部通过with(vm)
